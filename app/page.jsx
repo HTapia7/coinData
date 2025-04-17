@@ -1,5 +1,3 @@
-// app/page.tsx
-
 import { ArrowRight } from "lucide-react";
 
 export default function HomePage() {

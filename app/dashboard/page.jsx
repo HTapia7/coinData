@@ -8,13 +8,10 @@ import BarChart from "@/components/BarChart.jsx";
 export default function DashboardPage() {
   const { isLoaded, userId } = useAuth();
 
-  // Show a loading spinner or redirect to a login page if auth is not loaded
   if (!isLoaded) return <div>Loading...</div>;
 
-  // If no user is logged in, redirect to the sign-in page
   if (!userId) {
     return <div>Please log in to access the dashboard</div>;
-    // Or use a redirect to a sign-in page if needed, like `useRouter().push('/sign-in')`
   }
 
   return (

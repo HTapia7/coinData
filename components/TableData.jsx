@@ -2,19 +2,23 @@
 
 import { useEffect, useState } from "react";
 
-export default function () {
+export default function DashboardTable() {
   const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
     const fetchSessions = async () => {
-      const res = await fetch("/api/dashboard-data");
-      const data = await res.json();
-      setSessions(data);
+      try {
+        const res = await fetch("/api/dashboard-data");
+        const data = await res.json();
+        setSessions(data);
+      } catch (error) {
+        console.error("Error fetching sessions:", error);
+      }
     };
+
     fetchSessions();
   }, []);
 
-  // Calculate totals
   const totals = sessions.reduce(
     (acc, session) => {
       acc.heads += session.heads || 0;
@@ -26,11 +30,11 @@ export default function () {
     { heads: 0, tails: 0, wins: 0, losses: 0 }
   );
 
-  // Calculate ratios in percentage
   const headTailRatio =
     totals.heads + totals.tails > 0
       ? ((totals.heads / (totals.heads + totals.tails)) * 100).toFixed(2)
       : 0;
+
   const winLossRatio =
     totals.wins + totals.losses > 0
       ? ((totals.wins / (totals.wins + totals.losses)) * 100).toFixed(2)
@@ -38,15 +42,8 @@ export default function () {
 
   const handleDelete = async (id) => {
     try {
-      const res = await fetch(`/api/delete-data/${id}`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-      console.log(`Deleted session with ID ${id}`);
-
-      // Optional: Refresh page or state
-      setSessions(sessions.filter((session) => session._id !== id));
+      await fetch(`/api/delete-data/${id}`, { method: "DELETE" });
+      setSessions((prev) => prev.filter((session) => session._id !== id));
     } catch (err) {
       console.error("Failed to delete session:", err);
     }
@@ -72,47 +69,51 @@ export default function () {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((session) => (
-                <tr key={session._id} className="bg-gray-50 hover:bg-gray-200">
-                  <td className="py-6 px-10 border-b">
-                    {new Date(session.createdAt).toLocaleString("en-US", {
-                      weekday: "long",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </td>
-                  <td className="py-6 px-10 border-b text-center">{session.heads}</td>
-                  <td className="py-6 px-10 border-b text-center">{session.tails}</td>
-                  <td className="py-6 px-10 border-b text-center">{session.wins}</td>
-                  <td className="py-6 px-10 border-b text-center">{session.losses}</td>
-                  <td className="py-6 px-10 border-b text-center">
-                    {((session.heads / (session.heads + session.tails)) * 100).toFixed(2)}%
-                  </td>
-                  <td className="py-6 px-10 border-b text-center">
-                    {((session.wins / (session.wins + session.losses)) * 100).toFixed(2)}%
-                  </td>
-                  <td className="py-6 px-10 border-b text-center min-w-0">
-                    <button
-                      onClick={() => handleDelete(session._id)}
-                      className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-all duration-200"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {sessions.map((session) => {
+                const headTail = session.heads + session.tails;
+                const winLoss = session.wins + session.losses;
+
+                return (
+                  <tr key={session._id} className="bg-gray-50 hover:bg-gray-200">
+                    <td className="py-6 px-10 border-b">
+                      {new Date(session.createdAt).toLocaleString("en-US", {
+                        weekday: "long",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </td>
+                    <td className="py-6 px-10 border-b text-center">{session.heads}</td>
+                    <td className="py-6 px-10 border-b text-center">{session.tails}</td>
+                    <td className="py-6 px-10 border-b text-center">{session.wins}</td>
+                    <td className="py-6 px-10 border-b text-center">{session.losses}</td>
+                    <td className="py-6 px-10 border-b text-center">
+                      {headTail > 0 ? ((session.heads / headTail) * 100).toFixed(2) : "0.00"}%
+                    </td>
+                    <td className="py-6 px-10 border-b text-center">
+                      {winLoss > 0 ? ((session.wins / winLoss) * 100).toFixed(2) : "0.00"}%
+                    </td>
+                    <td className="py-6 px-10 border-b text-center min-w-0">
+                      <button
+                        onClick={() => handleDelete(session._id)}
+                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-xl transition-all duration-200"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
-            {/* Total row */}
             <tfoot>
-              <tr className="bg-gray-200">
-                <td className="py-6 px-10 text-center font-bold">Total</td>
-                <td className="py-6 px-10 text-center font-bold">{totals.heads}</td>
-                <td className="py-6 px-10 text-center font-bold">{totals.tails}</td>
-                <td className="py-6 px-10 text-center font-bold">{totals.wins}</td>
-                <td className="py-6 px-10 text-center font-bold">{totals.losses}</td>
-                <td className="py-6 px-10 text-center font-bold">{headTailRatio}%</td>
-                <td className="py-6 px-10 text-center font-bold">{winLossRatio}%</td>
+              <tr className="bg-gray-200 font-bold">
+                <td className="py-6 px-10 text-center">Total</td>
+                <td className="py-6 px-10 text-center">{totals.heads}</td>
+                <td className="py-6 px-10 text-center">{totals.tails}</td>
+                <td className="py-6 px-10 text-center">{totals.wins}</td>
+                <td className="py-6 px-10 text-center">{totals.losses}</td>
+                <td className="py-6 px-10 text-center">{headTailRatio}%</td>
+                <td className="py-6 px-10 text-center">{winLossRatio}%</td>
                 <td className="py-6 px-10 text-center"></td>
               </tr>
             </tfoot>

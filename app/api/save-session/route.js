@@ -12,13 +12,10 @@ const connectToDatabase = async () => {
 };
 
 export async function POST(req) {
-  console.log("📥 Incoming POST request to /api/sessions");
 
   const { userId } = await getAuth(req);
-  console.log("👤 Clerk userId:", userId);
 
   if (!userId) {
-    console.log("❌ No userId found. User not authenticated.");
     return new Response(
       JSON.stringify({ success: false, error: "User not authenticated" }),
       { status: 401, headers: { "Content-Type": "application/json" } }
@@ -28,9 +25,7 @@ export async function POST(req) {
   let data;
   try {
     data = await req.json();
-    console.log("📦 Received JSON:", data);
   } catch (err) {
-    console.error("❗ Invalid JSON format:", err);
     return new Response(
       JSON.stringify({
         success: false,
@@ -49,7 +44,6 @@ export async function POST(req) {
     typeof wins !== "number" ||
     typeof losses !== "number"
   ) {
-    console.warn("⚠️ Invalid data types for session values:", data);
     return new Response(
       JSON.stringify({
         success: false,
@@ -70,17 +64,14 @@ export async function POST(req) {
       losses,
     });
 
-    console.log("📝 Saving session to database...");
     const savedSession = await session.save();
 
-    console.log("✅ Session inserted with ID:", savedSession._id);
 
     return new Response(
       JSON.stringify({ success: true, sessionId: savedSession._id }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("🔥 Error saving session:", err);
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }

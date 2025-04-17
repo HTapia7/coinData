@@ -1,20 +1,19 @@
-import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
-import { getAuth } from "@clerk/nextjs/server"; // Import Clerk's getAuth function to get the userId
+import { getAuth } from "@clerk/nextjs/server";
+import mongoose from "mongoose";
+import SessionData from "@/models/schema";
+let isConnected = false;
 
-const uri = process.env.MONGO_URI;
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
+const connectToDatabase = async () => {
+  if (isConnected) return;
+  if (!process.env.MONGO_URI) throw new Error("Missing MONGO_URI in environment variables.");
+  await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
+};
 
 export async function DELETE(req, { params }) {
-  // Get the user session data from Clerk
-  const { userId } = getAuth(req);
 
-  // If no userId is found (user not authenticated), reject the request
+  const { userId } = await getAuth(req);
+
   if (!userId) {
     return new Response(
       JSON.stringify({ success: false, error: "User not authenticated" }),
@@ -22,63 +21,34 @@ export async function DELETE(req, { params }) {
     );
   }
 
-  // Ensure params is awaited
-  const { id } = await params;  // Await the params before using it
-
+  const { id } = params;
   if (!id) {
     return new Response(
-      JSON.stringify({ success: false, error: "No ID provided" }),
+      JSON.stringify({ success: false, error: "Session ID is required" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
 
   try {
-    await client.connect(); // Ensure connection
-    const db = client.db("coinTracker");
-    const sessions = db.collection("sessions");
+    await connectToDatabase();
 
-    // Ensure that the id is a valid ObjectId
-    if (!ObjectId.isValid(id)) {
+    const deleted = await SessionData.findOneAndDelete({ _id: id, userId });
+
+    if (!deleted) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid ID format" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const objectId = new ObjectId(id);
-
-    // Check if the session belongs to the logged-in user
-    const session = await sessions.findOne({ _id: objectId, userId });
-
-    if (!session) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Session not found or unauthorized" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Delete the document with the specific ID
-    const result = await sessions.deleteOne({ _id: objectId });
-
-    // If no document is deleted, return an error
-    if (result.deletedCount === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Session not found" }),
+        JSON.stringify({ success: false, error: "Session not found or not authorized" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
-      JSON.stringify({ success: true, deletedCount: result.deletedCount }),
+      JSON.stringify({ success: true, deletedId: id }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("Error deleting session:", err);
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
-  } finally {
-    await client.close(); // Ensure the connection is closed
   }
 }
