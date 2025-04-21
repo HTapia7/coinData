@@ -21,7 +21,7 @@ export async function DELETE(req, { params }) {
     );
   }
 
-  const { id } = params;
+  const { id } = await params;
   if (!id) {
     return new Response(
       JSON.stringify({ success: false, error: "Session ID is required" }),

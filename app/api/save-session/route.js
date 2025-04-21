@@ -1,6 +1,7 @@
+// app/api/save-session/route.js (or wherever this lives)
 import { getAuth } from "@clerk/nextjs/server";
 import mongoose from "mongoose";
-import SessionData from "@/models/schema.js"; // adjust path if needed
+import SessionData from "@/models/schema"; // adjust the path if needed
 
 let isConnected = false;
 
@@ -12,7 +13,6 @@ const connectToDatabase = async () => {
 };
 
 export async function POST(req) {
-
   const { userId } = await getAuth(req);
 
   if (!userId) {
@@ -53,6 +53,28 @@ export async function POST(req) {
     );
   }
 
+  const totalCoinToss = heads + tails;
+  const totalGames = wins + losses;
+
+  if (totalCoinToss !== totalGames) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Mismatch between Coin Counter and Win Loss",
+        details: {
+          heads,
+          tails,
+          wins,
+          losses,
+          totalCoinToss,
+          totalGames,
+          difference: totalCoinToss - totalGames,
+        },
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     await connectToDatabase();
 
@@ -65,7 +87,6 @@ export async function POST(req) {
     });
 
     const savedSession = await session.save();
-
 
     return new Response(
       JSON.stringify({ success: true, sessionId: savedSession._id }),
